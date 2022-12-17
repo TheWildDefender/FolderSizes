@@ -111,7 +111,7 @@
          </property>
          <property name="icon">
           <iconset resource="icons.qrc">
-           <normaloff>:/up</normaloff>:/up</iconset>
+           <normaloff>:/icons/up</normaloff>:/icons/up</iconset>
          </property>
         </widget>
        </item>

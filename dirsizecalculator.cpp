@@ -1,16 +1,14 @@
-#include "dirsizecalculator.h"
+﻿#include "dirsizecalculator.h"
 
 #include <QDebug>
+#include <QDir>
 
 DirSizeTask::DirSizeTask(QObject* parent, const QString& dirPath) :
     QObject(parent),
     dirPath(dirPath)
-{}
-
-//DirSizeTask::~DirSizeTask()
-//{
-//    qInfo() << "task destructed";
-//}
+{
+    subdirsToSearch.enqueue(dirPath);
+}
 
 DirSizeCalculator::DirSizeCalculator(QObject *parent) : QObject{parent}
 {
@@ -33,12 +31,35 @@ void DirSizeCalculator::startTask(const QString& path)
 void DirSizeCalculator::stopWorkers()
 {
     for (DirSizeTaskWorker* w : workers)
-        w->stop();
+        w->setActive(false);
     for (DirSizeTaskWorker* w : workers)
         w->wait();
 }
 
-void DirSizeCalculator::dirSizeTaskFinished(const QString& dirPath, const long size)
+void DirSizeCalculator::cancelTasks()
+{
+    for (DirSizeTaskWorker* w : workers)
+        w->setActive(false);
+    for (DirSizeTaskWorker* w : workers)
+        w->wait();
+
+    tasks.clear();
+
+    for (DirSizeTaskWorker* w : workers) {
+        w->setActive(true);
+        w->start();
+    }
+}
+
+long DirSizeCalculator::getNumTasks()
+{
+    tasksMutex.lock();
+    long numTasks = tasks.size();
+    tasksMutex.unlock();
+    return numTasks;
+}
+
+void DirSizeCalculator::dirSizeTaskFinished(const QString& dirPath, const long long size)
 {
     emit dirSizeCalculated(dirPath, size);
 }
@@ -49,9 +70,9 @@ DirSizeTaskWorker::DirSizeTaskWorker(QObject* parent,
     tasks(tasks), tasksMutex(tasksMutex)
 {}
 
-void DirSizeTaskWorker::stop()
+void DirSizeTaskWorker::setActive(bool active)
 {
-    active = false;
+    this->active = active;
 }
 
 void DirSizeTaskWorker::run()
@@ -69,12 +90,40 @@ void DirSizeTaskWorker::run()
         DirSizeTask* task = tasks.dequeue();
         tasksMutex.unlock();
 
-        // debug
-        qInfo() << task->dirPath;
-
-        // Check if task is finished
+        // Get subdir to work on and increment worker count
         task->taskMutex.lock();
-        if (task->subdirsToSearch.isEmpty()) {
+        QString curDirPath = task->subdirsToSearch.dequeue();
+        ++task->numActiveWorkers;
+        task->taskMutex.unlock();
+
+        QDir curDir(curDirPath);
+        QStringList fileNames = curDir.entryList(
+                    QDir::Files | QDir::Hidden | QDir::System | QDir::NoSymLinks
+        );
+        QStringList subdirNames = curDir.entryList(
+                    QDir::Dirs | QDir::Hidden | QDir::System | QDir::NoSymLinks | QDir::NoDotAndDotDot
+        );
+        for (const QString& fileName : fileNames) {
+            QString filePath = curDir.absoluteFilePath(fileName);
+            QFileInfo fileInfo(filePath);
+            task->size.fetchAndAddRelaxed(fileInfo.size());
+        }
+        for (const QString& subdirName : subdirNames) {
+            QString subdirPath = curDir.absoluteFilePath(subdirName);
+
+            task->taskMutex.lock();
+            task->subdirsToSearch.enqueue(subdirPath);
+            task->taskMutex.unlock();
+
+            tasksMutex.lock();
+            tasks.enqueue(task);
+            tasksMutex.unlock();
+        }
+
+        // Decrement worker count and check if task is finished
+        task->taskMutex.lock();
+        --task->numActiveWorkers;
+        if (task->subdirsToSearch.isEmpty() && task->numActiveWorkers == 0) {
             task->taskMutex.unlock();
             emit dirSizeTaskFinished(task->dirPath, task->size);
             task->deleteLater();

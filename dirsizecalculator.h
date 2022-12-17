@@ -5,20 +5,19 @@
 #include <QQueue>
 #include <QThread>
 #include <QMutex>
+#include <QAtomicInteger>
 
 class DirSizeTask : public QObject
 {
     Q_OBJECT
 public:
     QString dirPath;
-    long size = 0;
+    QAtomicInteger<long long> size = 0;
     QQueue<QString> subdirsToSearch;
+    int numActiveWorkers = 0;
     QMutex taskMutex;
 
     DirSizeTask(QObject* parent, const QString& dirPath);
-
-    // debug
-//    ~DirSizeTask();
 };
 
 class DirSizeTaskWorker;
@@ -31,12 +30,14 @@ public:
 
     void startTask(const QString& path);
     void stopWorkers();
+    void cancelTasks();
+    long getNumTasks();
 
 signals:
-    void dirSizeCalculated(const QString& path, const long size);
+    void dirSizeCalculated(const QString& path, const long long size);
 
 private slots:
-    void dirSizeTaskFinished(const QString& dirPath, const long size);
+    void dirSizeTaskFinished(const QString& dirPath, const long long size);
 
 private:
     QQueue<DirSizeTask*> tasks;
@@ -49,10 +50,10 @@ class DirSizeTaskWorker : public QThread
     Q_OBJECT
 public:
     DirSizeTaskWorker(QObject* parent, QQueue<DirSizeTask*>& tasks, QMutex& tasksMutex);
-    void stop();
+    void setActive(bool active);
 
 signals:
-    void dirSizeTaskFinished(const QString& dirPath, const long size);
+    void dirSizeTaskFinished(const QString& dirPath, const long long size);
 
 protected:
     void run() override;

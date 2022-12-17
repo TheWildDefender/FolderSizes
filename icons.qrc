@@ -1,5 +1,8 @@
 <RCC>
-    <qresource prefix="/">
+    <qresource prefix="/icons">
         <file alias="up">icons/up.png</file>
+        <file alias="file">icons/file.png</file>
+        <file alias="folder">icons/folder.png</file>
+        <file alias="refresh">icons/refresh.png</file>
     </qresource>
 </RCC>

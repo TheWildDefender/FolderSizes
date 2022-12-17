@@ -10,11 +10,15 @@ CONFIG += c++17
 
 SOURCES += \
     dirsizecalculator.cpp \
+    entrynametableitem.cpp \
+    entrysizetableitem.cpp \
     main.cpp \
     mainwindow.cpp
 
 HEADERS += \
     dirsizecalculator.h \
+    entrynametableitem.h \
+    entrysizetableitem.h \
     mainwindow.h
 
 FORMS += \
@@ -28,4 +32,5 @@ else: unix:!android: target.path = /opt/$${TARGET}/bin
 RESOURCES += \
     icons.qrc
 
-DISTFILES +=
+DISTFILES += \
+    icon-credit.txt

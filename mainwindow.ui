@@ -13,6 +13,10 @@
   <property name="windowTitle">
    <string>FolderSizes</string>
   </property>
+  <property name="windowIcon">
+   <iconset resource="icons.qrc">
+    <normaloff>:/icons/folder</normaloff>:/icons/folder</iconset>
+  </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QVBoxLayout" name="verticalLayout">
     <property name="spacing">

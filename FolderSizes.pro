@@ -13,13 +13,15 @@ SOURCES += \
     entrynametableitem.cpp \
     entrysizetableitem.cpp \
     main.cpp \
-    mainwindow.cpp
+    mainwindow.cpp \
+    suffixedfilesize.cpp
 
 HEADERS += \
     dirsizecalculator.h \
     entrynametableitem.h \
     entrysizetableitem.h \
-    mainwindow.h
+    mainwindow.h \
+    suffixedfilesize.h
 
 FORMS += \
     mainwindow.ui

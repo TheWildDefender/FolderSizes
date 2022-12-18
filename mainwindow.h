@@ -39,6 +39,7 @@ private slots:
     void displayDirSize(const QString& dirPath, const long long size);
     void displayNumTasks();
     void onColHeaderClicked(int sectionIndex);
+    void onCellDoubleClicked(int row, int col);
 
 protected:
     void closeEvent(QCloseEvent* event) override;
@@ -47,10 +48,12 @@ private:
     Ui::MainWindow *ui;
 
     QString curDirPath = QDir::homePath();
-    // keyed by entry name, not full paths
-    QMap<QString, EntrySizeTableItem*> sizeItems;
+    QMap<QString, EntrySizeTableItem*> sizeItems; // keyed by entry name, not full paths
     DirSizeCalculator dirSizeCalculator;
     QTimer getNumTasksTimer;
+    long numSubDirs;
+    long numSubDirsCalculated;
+    long long curDirTotalSize;
 
     void addNewEntryRow(const QString& entryName, bool isDir);
 };

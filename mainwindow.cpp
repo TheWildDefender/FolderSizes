@@ -6,6 +6,7 @@
 #include <QCloseEvent>
 
 #include "entrynametableitem.h"
+#include "suffixedfilesize.h"
 
 const QString MainWindow::CALCULATING_SIZE_STR = "Calculating";
 
@@ -30,6 +31,7 @@ MainWindow::MainWindow(QWidget *parent) :
 
     QHeaderView* colHeaders = ui->tableWidget->horizontalHeader();
     QObject::connect(colHeaders, &QHeaderView::sectionClicked, this, &MainWindow::onColHeaderClicked);
+    QObject::connect(ui->tableWidget, &QTableWidget::cellDoubleClicked, this, &MainWindow::onCellDoubleClicked);
 
     QObject::connect(this, &MainWindow::curDirChanged, this, &MainWindow::onCurDirChanged);
 
@@ -108,6 +110,11 @@ void MainWindow::onCurDirChanged(const QString& curDirPath)
     // Stop any previous dir size calculations
     dirSizeCalculator.cancelTasks();
 
+    // Set numSubDirs and reset numSubDirsCalculated and curDirTotalSize
+    numSubDirs = subdirNames.size();
+    numSubDirsCalculated = 0;
+    curDirTotalSize = 0;
+
     // Clear table widget and entry size items list
     // Call removeRow repeatedly instead of using clear to preserve column headers
     for (int i = ui->tableWidget->rowCount() - 1; i >= 0; --i)
@@ -129,24 +136,52 @@ void MainWindow::onCurDirChanged(const QString& curDirPath)
         QString filePath = curDir.absoluteFilePath(fileName);
         QFileInfo fileInfo(filePath);
         sizeItems[fileName]->setEntrySize(fileInfo.size());
+        curDirTotalSize += fileInfo.size();
     }
+
+    // If there are no subdirs, display cur dir total size
+    if (numSubDirs == 0)
+        ui->totalSizeLabel->setText("Total size: " + suffixedFileSize(curDirTotalSize));
+    // Otherwise, set text to "Calculating"
+    else
+        ui->totalSizeLabel->setText("Total size: " + CALCULATING_SIZE_STR);
 }
 
 void MainWindow::displayDirSize(const QString& dirPath, const long long size)
 {
     QFileInfo dirInfo(dirPath);
     sizeItems[dirInfo.fileName()]->setEntrySize(size);
+
+    ++numSubDirsCalculated;
+    curDirTotalSize += size;
+    if (numSubDirsCalculated == numSubDirs)
+        ui->totalSizeLabel->setText("Total size: " + suffixedFileSize(curDirTotalSize));
 }
 
 void MainWindow::displayNumTasks()
 {
     long numTasks = dirSizeCalculator.getNumTasks();
-    ui->statusBar->showMessage("Tasks: " + QString::number(numTasks));
+    ui->tasksLabel->setText("Tasks: " + QString::number(numTasks));
 }
 
 void MainWindow::onColHeaderClicked(int sectionIndex)
 {
     ui->tableWidget->sortItems(sectionIndex);
+}
+
+void MainWindow::onCellDoubleClicked(int row, int col)
+{
+    QString entryName = ui->tableWidget->item(row, 0)->text();
+    QDir curDir(curDirPath);
+    QString entryPath = curDir.absoluteFilePath(entryName);
+
+    QFileInfo entryInfo(entryPath);
+    if (!entryInfo.isDir())
+        return;
+
+    curDirPath = entryPath;
+    ui->pathEdit->setText(entryPath);
+    emit curDirChanged(curDirPath);
 }
 
 void MainWindow::closeEvent(QCloseEvent* event)

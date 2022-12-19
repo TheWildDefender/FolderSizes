@@ -6,6 +6,7 @@
 #include <QMap>
 #include <QTimer>
 #include <QTableWidgetItem>
+#include <QMutex>
 
 #include "dirsizecalculator.h"
 #include "entrysizetableitem.h"
@@ -49,6 +50,7 @@ private:
 
     QString curDirPath = QDir::homePath();
     QMap<QString, EntrySizeTableItem*> sizeItems; // keyed by entry name, not full paths
+    QMutex sizeItemsMutex;
     DirSizeCalculator dirSizeCalculator;
     QTimer getNumTasksTimer;
     long numSubDirs;

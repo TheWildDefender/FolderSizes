@@ -15,8 +15,12 @@ DirSizeCalculator::DirSizeCalculator(QObject *parent) : QObject{parent}
     for (int i = 0; i < QThread::idealThreadCount(); ++i) {
         DirSizeTaskWorker* w = new DirSizeTaskWorker(this, tasks, tasksMutex);
         workers.push_back(w);
+        // Use a blocking queued connection to ensure that when the main thread is finished with waiting for the
+        // calculator to cancel all tasks, the calculator will not emit any more dirSizeCalculated signals. The
+        // connection should be queued, because reporting a dir size requires updating UI elements.
         QObject::connect(w, &DirSizeTaskWorker::dirSizeTaskFinished,
-                         this, &DirSizeCalculator::dirSizeTaskFinished);
+                         this, &DirSizeCalculator::dirSizeTaskFinished,
+                         Qt::BlockingQueuedConnection);
         w->start();
     }
 }
